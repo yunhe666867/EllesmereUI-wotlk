@@ -637,7 +637,7 @@ end
         -- Mount name from the live helpful aura that MountJournal recognizes.
         -- Opt-in (default off). Per-GUID cached so refresh ticks on an
         -- unmounted player never re-walk the whole aura list.
-        if unit and guid and db and db.tooltipShowMount and not _tipHasLine(tt, "Mount:") then
+        if unit and guid and db and db.tooltipShowMount and not _tipHasLine(tt, "坐骑：") then
             local mountName, mountCollected
             local cached = _mountCache[guid]
             if cached and (GetTime() - cached.time) < _mountCacheTTL then
@@ -658,7 +658,7 @@ end
                 elseif mountCollected == false then
                     valText = mountName .. " |TInterface\\RaidFrame\\ReadyCheck-NotReady:0|t"
                 end
-                tt:AddDoubleLine("Mount:", valText, 1, 1, 1, 1, 1, 1)
+                tt:AddDoubleLine("坐骑：", valText, 1, 1, 1, 1, 1, 1)
             end
         end
         -- Who the hovered player currently targets (opt-in, default off).
@@ -1925,11 +1925,41 @@ do
 
         local RS = EllesmereUI.RESKIN
 
-        -- Strip decorative textures
-        for i = 1, select("#", GameMenuFrame:GetRegions()) do
-            local r = select(i, GameMenuFrame:GetRegions())
-            if r and r:IsObjectType("Texture") then r:SetAlpha(0) end
+        -- Persistently suppress the native dialog border/background. A one-time
+        -- SetAlpha(0) at login is undone by Blizzard's GameMenuFrame layout when
+        -- the menu opens, so hook SetAlpha/Show and re-run the sweep on every
+        -- OnShow. Textures WE create are flagged _euiOwned and left alone.
+        local ownedGM = {}
+        local function SuppressGMTexture(r)
+            if ownedGM[r] then return end
+            ownedGM[r] = true
+            r:SetAlpha(0)
+            if hooksecurefunc then
+                hooksecurefunc(r, "SetAlpha", function(self, a)
+                    if a ~= 0 and not self._gmfLock then
+                        self._gmfLock = true; self:SetAlpha(0); self._gmfLock = nil
+                    end
+                end)
+                hooksecurefunc(r, "Show", function(self)
+                    if not self._gmfLock then
+                        self._gmfLock = true; self:SetAlpha(0); self._gmfLock = nil
+                    end
+                end)
+            end
         end
+        local function HideNativeGMChrome()
+            -- The ornate DialogFrame border is the frame BACKDROP edge in this
+            -- client (engine-rendered, not a Texture region); drop it on login
+            -- and again on every OnShow so it cannot reappear.
+            if GameMenuFrame.SetBackdrop then GameMenuFrame:SetBackdrop(nil) end
+            for i = 1, select("#", GameMenuFrame:GetRegions()) do
+                local r = select(i, GameMenuFrame:GetRegions())
+                if r and r:IsObjectType("Texture") and not r._euiOwned then
+                    SuppressGMTexture(r)
+                end
+            end
+        end
+        HideNativeGMChrome()
         if GameMenuFrame.NineSlice then GameMenuFrame.NineSlice:SetAlpha(0) end
         if GameMenuFrame.Border then GameMenuFrame.Border:SetAlpha(0) end
         -- Strip header textures, accent-color the title, nudge down
@@ -1954,6 +1984,7 @@ do
         local gmBg = GameMenuFrame:CreateTexture(nil, "BACKGROUND")
         gmBg:SetAllPoints()
         gmBg:SetTexture(RS.BG_R, RS.BG_G, RS.BG_B, RS.QT_ALPHA)
+        gmBg._euiOwned = true
         local function ApplyButtonStyle(btn)
             local d = GetFFD(btn)
             -- Blizzard's pooled buttons are skinned in this addon's private
@@ -1980,6 +2011,7 @@ do
             end
         end
         local function ApplyMenuStyle()
+            HideNativeGMChrome()
             EllesmereUI._applyBlizzardConfiguredBorder(GameMenuFrame, "popupMenu", 1)
             if GameMenuFrame.buttonPool then
                 for btn in GameMenuFrame.buttonPool:EnumerateActive() do ApplyButtonStyle(btn) end

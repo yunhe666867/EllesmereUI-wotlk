@@ -260,7 +260,7 @@ local function PreSkinCharacterSheet()
     if not frame then _preSkinned = false; return end
 
     -- Expand CharacterFrame to fit full EUI theme width (550px)
-    frame:SetWidth(550)
+    frame:SetWidth(580)
     if frame.backdrop then
         frame.backdrop:Hide()
         frame.backdrop:SetAlpha(0)
@@ -1916,7 +1916,7 @@ local function SkinCharacterSheet()
 
     -- Stats panel: fixed 200px wide, stretches from 60px below top to 10px above bottom.
     local statsPanel = EllesmereUI.SafeCreateFrame("Frame", "EUI_CharSheet_StatsPanel", frame)
-    statsPanel:SetWidth(190)
+    statsPanel:SetWidth(222)
     statsPanel:SetPoint("TOPLEFT",    frame, "TOPLEFT",    345, -60)
     statsPanel:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 345,  40)
     statsPanel:SetFrameLevel(50)
@@ -2560,6 +2560,15 @@ local function SkinCharacterSheet()
     if scrollFrame:GetWidth() and scrollFrame:GetWidth() > 0 then
         scrollChild:SetWidth(scrollFrame:GetWidth())
     end
+    -- Deferred sync: on the creation frame the anchors are not resolved yet
+    -- (GetWidth()==0), which would leave scrollChild at its temporary 200 and
+    -- make the stat rows overflow the panel. Re-sync on the next frame, after
+    -- the layout pass has settled.
+    scrollFrame:SetScript("OnUpdate", function(self)
+        self:SetScript("OnUpdate", nil)
+        local w = scrollFrame:GetWidth()
+        if w and w > 0 then scrollChild:SetWidth(w) end
+    end)
 
     -- Custom thin scrollbar: pinned to the owner frame's right edge, thumb
     -- responds to wheel + drag. Opts: trackOwner (frame the track pins to),
@@ -3055,7 +3064,7 @@ local function SkinCharacterSheet()
                     end
                 end
                 -- Recalculate section height based on visible stats
-                sectionData.height = 22 + (visibleCount * 16)
+                sectionData.height = 28 + (visibleCount * 20)
             end
         end
         GetFFD(frame).recalculateSections()
@@ -3179,7 +3188,9 @@ local function SkinCharacterSheet()
         local sectionContainer = EllesmereUI.SafeCreateFrame("Frame", nil, scrollChild)
         sectionContainer:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, yOffset)
         sectionContainer:SetPoint("TOPRIGHT", scrollChild, "TOPRIGHT", 0, yOffset)
-        sectionContainer:SetWidth(260)
+        -- Width follows the TOPLEFT/TOPRIGHT anchors to scrollChild.
+        -- (Was hard-coded 260 from the wider Retail panel, which overflowed
+        -- the narrower WotLK stats panel and clipped the right-aligned values.)
 
         -- Title + bar container spans the full section width so the left
         -- bar starts flush with stat labels and the right bar ends flush
@@ -3187,12 +3198,12 @@ local function SkinCharacterSheet()
         local titleContainer = EllesmereUI.SafeCreateFrame("Button", nil, sectionContainer)
         titleContainer:SetPoint("TOPLEFT",  sectionContainer, "TOPLEFT",  0, 0)
         titleContainer:SetPoint("TOPRIGHT", sectionContainer, "TOPRIGHT", 0, 0)
-        titleContainer:SetHeight(16)
+        titleContainer:SetHeight(20)
         titleContainer:RegisterForClicks("LeftButtonUp")
 
         -- Section title (centered in container)
         local sectionTitle = titleContainer:CreateFontString(nil, "OVERLAY")
-        sectionTitle:SetFont(fontPath, 11, "")
+        sectionTitle:SetFont(fontPath, 13, "")
         sectionTitle:SetTextColor(section.color.r, section.color.g, section.color.b, 1)
         sectionTitle:SetPoint("CENTER", titleContainer, "CENTER", 0, 0)
         sectionTitle:SetText(L(section.title))
@@ -3233,7 +3244,7 @@ local function SkinCharacterSheet()
             if _ticks >= 2 then self:SetScript("OnUpdate", nil) end
         end)
 
-        local statYOffset = -22
+        local statYOffset = -26
 
         -- Store section data for collapse/expand. Initial collapsed state
         -- is restored from SavedVariables (EllesmereUIDB.charSheetCollapsedSections)
@@ -3266,16 +3277,16 @@ local function SkinCharacterSheet()
             if ShouldShowStat(stat.showWhen) and ShouldShowCrest(stat) then
                 -- Stat label
                 local label = sectionContainer:CreateFontString(nil, "OVERLAY")
-                label:SetFont(fontPath, 10, "")
+                label:SetFont(fontPath, 15, "")
                 label:SetTextColor(0.7, 0.7, 0.7, 0.8)
                 label:SetPoint("TOPLEFT", sectionContainer, "TOPLEFT", 0, statYOffset)
                 label:SetText(L(stat.name))
 
                 -- Stat value
                 local value = sectionContainer:CreateFontString(nil, "OVERLAY")
-                value:SetFont(fontPath, 10, "")
+                value:SetFont(fontPath, 15, "")
                 value:SetTextColor(section.color.r, section.color.g, section.color.b, 1)
-                value:SetPoint("TOPRIGHT", sectionContainer, "TOPRIGHT", 0, statYOffset)
+                value:SetPoint("TOPRIGHT", sectionContainer, "TOPRIGHT", -3, statYOffset)
                 value:SetJustifyH("RIGHT")
                 value:SetText("0")
 
@@ -3285,7 +3296,7 @@ local function SkinCharacterSheet()
                 local valueButton = EllesmereUI.SafeCreateFrame("Button", nil, sectionContainer)
                 valueButton:SetPoint("TOPLEFT", sectionContainer, "TOPLEFT", 0, statYOffset)
                 valueButton:SetPoint("TOPRIGHT", sectionContainer, "TOPRIGHT", 0, statYOffset)
-                valueButton:SetHeight(16)
+                valueButton:SetHeight(20)
                 valueButton:EnableMouse(true)
 
                 valueButton:SetScript("OnEnter", function()
@@ -3541,7 +3552,7 @@ local function SkinCharacterSheet()
                     table.insert(sectionData.stats, {divider = divider})
                 end
 
-                statYOffset = statYOffset - 16
+                statYOffset = statYOffset - 20
             end
         end
 
@@ -4624,7 +4635,7 @@ local function SkinCharacterSheet()
                     local missing = GetMissingSetItems(tile._setName)
                     if #missing > 0 then
                         GameTooltip:SetOwner(tile, "ANCHOR_RIGHT")
-                        GameTooltip:AddLine("Missing Items:", 1, 0.3, 0.3, 1)
+                        GameTooltip:AddLine("缺失装备：", 1, 0.3, 0.3, 1)
                         for _, item in ipairs(missing) do
                             local icon = (C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(item.itemID))
                                 or (GetItemIcon and GetItemIcon(item.itemID))
@@ -4873,7 +4884,7 @@ local function SkinCharacterSheet()
             label:SetFont(fontPath, 9, "")
             label:SetPoint("CENTER", calcTab, "CENTER", 0, 0)
             label:SetJustifyH("CENTER")
-            label:SetText("Upgrades")
+            label:SetText("升级")
 
             -- Accent underline (matches Blizzard tab underline)
             local EG = EllesmereUI.ELLESMERE_GREEN or { r = 0.05, g = 0.82, b = 0.62 }
