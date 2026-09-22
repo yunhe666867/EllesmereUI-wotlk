@@ -1263,7 +1263,7 @@ local function SkinInspectSheet()
                     hex = MP_COLOR_BRACKETS[i][2]; break
                 end
             end
-            GetFFD(frame).mPlusScoreText:SetFormattedText("M+ Score: |cff%s%d|r", hex, math.floor(mpScore))
+            GetFFD(frame).mPlusScoreText:SetFormattedText("大秘境评分：|cff%s%d|r", hex, math.floor(mpScore))
             GetFFD(frame).mPlusScoreText:Show()
         else
             GetFFD(frame).mPlusScoreText:Hide()
@@ -1730,7 +1730,7 @@ if EllesmereUI then
 
 else
     -- EllesmereUI.Print not available here (EllesmereUI is nil)
-    DEFAULT_CHAT_FRAME:AddMessage("|cffff0000Error:|r EllesmereUI not found! Themed Inspect Sheet requires EllesmereUI.")
+    DEFAULT_CHAT_FRAME:AddMessage("|cffff0000错误：|r 未找到 EllesmereUI！主题化观察面板需要 EllesmereUI。")
 end
 
 -- Initialize defaults

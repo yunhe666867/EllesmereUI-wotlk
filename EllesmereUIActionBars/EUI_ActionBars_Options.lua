@@ -1372,7 +1372,7 @@ initFrame:SetScript("OnEvent", function(self)
                           end
                       end
                       if anyMissing then
-                          print("|cff00ccffEllesmere:|r Reload required to create custom bars. Type /reload")
+                          print("|cff00ccffEllesmere:|r 需要重载界面才能创建自定义动作条。请输入 /reload")
                       end
                       if StatusTrackingBarManager then
                           StatusTrackingBarManager:UnregisterAllEvents()
@@ -4223,7 +4223,7 @@ initFrame:SetScript("OnEvent", function(self)
                     -- Row 1: Show Paging Arrows (+ inline cog) | Shift Modifier
                     local pagingArrowsWidget
                     if selKey == "MainBar" then
-                        pagingArrowsWidget = { type="toggle", text="Show Paging Arrows",
+                        pagingArrowsWidget = { type="toggle", text="显示翻页箭头",
                           getValue=function() return SGet("showPagingArrows") or false end,
                           setValue=function(v)
                               SSet("showPagingArrows", v, function()
@@ -4231,14 +4231,14 @@ initFrame:SetScript("OnEvent", function(self)
                               end)
                               EllesmereUI:RefreshPage()
                           end,
-                          tooltip="Show page up/down arrows next to Action Bar 1 for cycling through action bar pages 1-6." }
+                          tooltip="在主动作条旁显示上/下翻页箭头，用于在动作条第1-6页之间切换。" }
                     else
                         pagingArrowsWidget = { type="label", text="" }
                     end
                     local pagingRow
                     pagingRow, h = W:DualRow(parent, y,
                         pagingArrowsWidget,
-                        { type="dropdown", text="Shift Modifier",
+                        { type="dropdown", text="Shift 修饰键",
                           values=pagingValues, order=pagingOrder,
                           getValue=function() return GetPagingVal("shift") end,
                           setValue=function(v) SetPagingVal("shift", v) end });  y = y - h
@@ -4248,9 +4248,9 @@ initFrame:SetScript("OnEvent", function(self)
                         local lRgn = pagingRow._leftRegion
                         local pagingOff = function() return not (SGet("showPagingArrows") or false) end
                         local _, pagingCogShow = EllesmereUI.BuildCogPopup({
-                            title = "Paging Arrow Settings",
+                            title = "翻页箭头设置",
                             rows = {
-                                { type="toggle", label="Show Arrows on Right",
+                                { type="toggle", label="箭头显示在右侧",
                                   get=function() return SGet("pagingArrowsRight") or false end,
                                   set=function(v)
                                       SSet("pagingArrowsRight", v, function()
@@ -4265,7 +4265,7 @@ initFrame:SetScript("OnEvent", function(self)
                         pagingCogBlock:SetFrameLevel(pagingCogBtn:GetFrameLevel() + 10)
                         pagingCogBlock:EnableMouse(true)
                         pagingCogBlock:SetScript("OnEnter", function()
-                            EllesmereUI.ShowWidgetTooltip(pagingCogBtn, EllesmereUI.DisabledTooltip("Show Paging Arrows"))
+                            EllesmereUI.ShowWidgetTooltip(pagingCogBtn, EllesmereUI.DisabledTooltip("显示翻页箭头"))
                         end)
                         pagingCogBlock:SetScript("OnLeave", function() EllesmereUI.HideWidgetTooltip() end)
                         EllesmereUI.RegisterWidgetRefresh(function()
@@ -4280,11 +4280,11 @@ initFrame:SetScript("OnEvent", function(self)
 
                     -- Row 2: Ctrl Modifier | Alt Modifier
                     _, h = W:DualRow(parent, y,
-                        { type="dropdown", text="Ctrl Modifier",
+                        { type="dropdown", text="Ctrl 修饰键",
                           values=pagingValues, order=pagingOrder,
                           getValue=function() return GetPagingVal("ctrl") end,
                           setValue=function(v) SetPagingVal("ctrl", v) end },
-                        { type="dropdown", text="Alt Modifier",
+                        { type="dropdown", text="Alt 修饰键",
                           values=pagingValues, order=pagingOrder,
                           getValue=function() return GetPagingVal("alt") end,
                           setValue=function(v) SetPagingVal("alt", v) end });  y = y - h

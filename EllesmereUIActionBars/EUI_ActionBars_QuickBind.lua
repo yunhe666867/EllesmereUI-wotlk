@@ -38,13 +38,13 @@ window:Hide()
 
 local title = window:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 title:SetPoint("TOP", 0, -14)
-title:SetText("Quick Keybind Mode")
+title:SetText("快速按键绑定模式")
 
 local description = window:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 description:SetPoint("TOPLEFT", 18, -42)
 description:SetPoint("TOPRIGHT", -18, -42)
 description:SetJustifyH("LEFT")
-description:SetText("Hover an action button and press a key to bind it.\nPress Escape or right-click to clear all bindings for that button.")
+description:SetText("将鼠标悬停在动作按钮上并按下一个按键即可绑定。\n按 Esc 或右键点击可清除该按钮的所有绑定。")
 
 local function MakeButton(text, x, callback, y)
     local button = CreateFrame("Button", nil, window, "UIPanelButtonTemplate")
@@ -83,9 +83,9 @@ local bindingScopeButton
 
 local function UpdateBindingScopeButton()
     if GetCurrentBindingSet() == 2 then
-        bindingScopeButton:SetText("Switch to Account-wide Keybindings")
+        bindingScopeButton:SetText("切换到账号级按键绑定")
     else
-        bindingScopeButton:SetText("Switch to Character-specific Keybindings")
+        bindingScopeButton:SetText("切换到角色专属按键绑定")
     end
 end
 
@@ -126,9 +126,9 @@ local function ShowBindingTooltip()
     GameTooltip:AddLine(ButtonLabel(currentButton, currentCommand), 1, 1, 1)
     local key1, key2 = GetBindingKey(currentCommand)
     if key1 or key2 then
-        GameTooltip:AddLine("Bound to: " .. table.concat({ key1 or "", key2 or "" }, key2 and ", " or ""), 0.1, 0.85, 0.65)
+        GameTooltip:AddLine("已绑定： " .. table.concat({ key1 or "", key2 or "" }, key2 and ", " or ""), 0.1, 0.85, 0.65)
     else
-        GameTooltip:AddLine("No bindings set", 0.65, 0.65, 0.65)
+        GameTooltip:AddLine("未设置绑定", 0.65, 0.65, 0.65)
     end
     GameTooltip:Show()
 end

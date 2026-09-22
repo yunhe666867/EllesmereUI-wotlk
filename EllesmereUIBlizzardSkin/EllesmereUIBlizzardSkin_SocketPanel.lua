@@ -669,7 +669,7 @@ local function PopulateFlyout()
         local row = AcquireGemRow(1)
         row.icon:SetTexture(nil)
         row.icon:SetTexture(0, 0, 0, 0)
-        row.label:SetText("No gems in bags.")
+        row.label:SetText("背包中没有宝石。")
         row.label:SetTextColor(0.5, 0.5, 0.5)
         row.count:SetText("")
         row.gemItemID = nil

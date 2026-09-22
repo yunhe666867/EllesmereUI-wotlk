@@ -2360,18 +2360,43 @@ local function GetOrCreateBagSlot(idx)
     CreateInsetBorder(btn)
     SetInsetBorderColor(btn, 0.25, 0.25, 0.25, 1)
 
-    -- Drag-and-drop: equip a bag into this slot
-    local function TrySwapBag(self)
-        if InCombatLockdown() then return end
-        if not CursorHasItem() then return end
-        local bagID = self:GetID()
-        if bagID == 0 then return end  -- can't replace backpack
-        local invID = C_Container.ContainerIDToInventoryID(bagID)
-        PickupInventoryItem(invID)
-        EUI_Bags._pendingBagSwap = true
+    -- Equip / unequip / swap a bag. PutItemInBag equips the bag on the
+    -- cursor and, with an empty cursor, picks up (unequips) the equipped
+    -- bag; it also blocks the swap when the bag being replaced is non-empty.
+    -- Re-draw the top bag-slot icons after the server confirms the equip /
+    -- unequip. BAG_UPDATE can fire before that confirmation, leaving the old
+    -- bag icon stuck, so re-poll at a couple of delays.
+    local function QueueBagBarRefresh()
+        C_Timer.After(0.10, function()
+            if not InCombatLockdown() and EUI_BagsWindow:IsVisible() then EUI_BagsWindow:RefreshBags() end
+        end)
+        C_Timer.After(0.40, function()
+            if not InCombatLockdown() and EUI_BagsWindow:IsVisible() then EUI_BagsWindow:RefreshBags() end
+        end)
     end
-    btn:SetScript("OnReceiveDrag", TrySwapBag)
-    btn:HookScript("OnClick", TrySwapBag)
+    local function BagSlotClick(self)
+        if InCombatLockdown() then return end
+        local bagID = self:GetID()
+        if not bagID or bagID == 0 then return end  -- backpack cannot be moved
+        local invID = C_Container.ContainerIDToInventoryID(bagID)
+        if not invID then return end
+        if _G.PutItemInBag then _G.PutItemInBag(invID) else PickupInventoryItem(invID) end
+        EUI_Bags._pendingBagSwap = true
+        QueueBagBarRefresh()
+    end
+    btn:SetScript("OnReceiveDrag", BagSlotClick)
+    btn:HookScript("OnClick", BagSlotClick)
+    btn:RegisterForDrag("LeftButton")
+    btn:SetScript("OnDragStart", function(self)
+        if InCombatLockdown() then return end
+        local bagID = self:GetID()
+        if not bagID or bagID == 0 then return end
+        local invID = C_Container.ContainerIDToInventoryID(bagID)
+        if not invID then return end
+        if _G.PickupBagFromSlot then _G.PickupBagFromSlot(invID) else PickupInventoryItem(invID) end
+        EUI_Bags._pendingBagSwap = true
+        QueueBagBarRefresh()
+    end)
 
     bagSlots[idx] = btn
     return btn
@@ -3938,7 +3963,7 @@ local function ShowCategoryContextMenu(btn, catIdx, isGroupHeader, isGroupMember
                 if not EUI.ShowInputPopup then return end
                 EUI:ShowInputPopup({
                     title = "Rename Category",
-                    message = "Enter a new name for \"" .. cat.name .. "\":",
+                    message = EllesmereUI.Lf("Enter a new name for \"%1$s\":", cat.name),
                     placeholder = cat.name,
                     confirmText = "Rename",
                     cancelText = "Cancel",
@@ -3950,7 +3975,7 @@ local function ShowCategoryContextMenu(btn, catIdx, isGroupHeader, isGroupMember
                     end,
                 })
             end)
-            rootDescription:CreateButton("Ungroup " .. cat.name, function()
+            rootDescription:CreateButton(EllesmereUI.L("Ungroup ") .. cat.name, function()
                 ClearGroupOrder(myGroup)
                 EUI_CategoryManager:UngroupCategory(catIdx)
                 EUI_Bags:RefreshInventory()
@@ -3960,7 +3985,7 @@ local function ShowCategoryContextMenu(btn, catIdx, isGroupHeader, isGroupMember
                 if not EUI.ShowInputPopup then return end
                 EUI:ShowInputPopup({
                     title = "Rename Category",
-                    message = "Enter a new name for \"" .. cat.name .. "\":",
+                    message = EllesmereUI.Lf("Enter a new name for \"%1$s\":", cat.name),
                     placeholder = cat.name,
                     confirmText = "Rename",
                     cancelText = "Cancel",
@@ -4039,6 +4064,14 @@ local function BuildSidebarButtons(categoryCounts, totalCount)
     displayList[#displayList + 1] = _fixedViews[_dbt] or _fixedViews.all
     for _, _k in ipairs({ "all", "onebag", "multibag" }) do
         if _k ~= _dbt then displayList[#displayList + 1] = _fixedViews[_k] end
+    end
+    do
+        local krCount = 0
+        local krNum = C_Container.GetContainerNumSlots(-2)
+        for s = 1, krNum do
+            if C_Container.GetContainerItemInfo(-2, s) then krCount = krCount + 1 end
+        end
+        displayList[#displayList + 1] = { catIdx = -3, name = "钥匙栏", icon = "Interface\\Icons\\INV_Misc_Key_01", count = krCount }
     end
 
     -- Categories with group support
@@ -4969,6 +5002,28 @@ function EUI_Bags:RefreshInventory()
     end
     ProfEnd("BagScan", _t0Scan)
 
+    -- Keyring (3.3.5 container -2; retail removed it). Kept separate so it
+    -- never enters classify / swap / snapshot / category-count logic.
+    do
+        local kr = {}
+        local krNum = C_Container.GetContainerNumSlots(-2)
+        for slot = 1, krNum do
+            local info = C_Container.GetContainerItemInfo(-2, slot)
+            if info then
+                local itemLink = C_Container.GetContainerItemLink(-2, slot)
+                local d = AcquireSlotTable()
+                d.bag = -2; d.slot = slot; d.info = info; d.itemLink = itemLink
+                d._isKeyring = true
+                if itemLink then
+                    local _, _, q, ilvl, _, _, _, _, _, _, _, _, _, bindType = GetItemInfo(itemLink)
+                    d._giQuality = q; d._giIlvl = ilvl; d._giBindType = bindType
+                end
+                kr[#kr + 1] = d
+            end
+        end
+        EUI_Bags._keyringItems = kr
+    end
+
     -- 1b. Detect manual item swaps and update saved visual order
     local isAllItems = selectedCategoryIndex == 0 and not selectedGroupName
     local swapDetected = DetectAndApplySwaps(tempItems, isAllItems)
@@ -5041,6 +5096,7 @@ function EUI_Bags:RefreshInventory()
     local _t0Filter = ProfBegin("FilterAndSort")
     local isRecentView = recentCatIdx and selectedCategoryIndex == recentCatIdx
     local isPinnedView = pinnedCatIdx and selectedCategoryIndex == pinnedCatIdx
+    local isKeyringView = (selectedCategoryIndex == -3)
     local filterSet = nil  -- nil = show all
     if selectedGroupName then
         filterSet = {}
@@ -5051,6 +5107,11 @@ function EUI_Bags:RefreshInventory()
     end
 
     local displayItems = {}
+    if isKeyringView then
+        for _, data in ipairs(EUI_Bags._keyringItems or {}) do
+            displayItems[#displayItems + 1] = data
+        end
+    else
     for _, data in ipairs(tempItems) do
         local show = true
         if isRecentView then
@@ -5062,6 +5123,7 @@ function EUI_Bags:RefreshInventory()
         end
         if show and data.info and data.info.isFiltered then show = false end
         if show then displayItems[#displayItems + 1] = data end
+    end
     end
 
     -- 4b. Pending resort: sort + save order for categories invalidated by group changes.
@@ -5243,7 +5305,30 @@ function EUI_Bags:RefreshInventory()
 
     ProfEnd("GridSetup", _t0GridSetup)
 
-    if selectedCategoryIndex == -1 or selectedCategoryIndex == -2 then
+    if selectedCategoryIndex == -3 then
+        -- Keyring: one header + flat grid of keys gathered from container -2.
+        local krList = EUI_Bags._keyringItems or {}
+        local krHdr = GetOrCreateCatHeader(1)
+        krHdr:SetParent(child)
+        krHdr:ClearAllPoints()
+        krHdr:SetPoint("TOPLEFT", child, "TOPLEFT", startX, curY)
+        krHdr:SetWidth(columns * (SLOT_SIZE + SPACING))
+        krHdr._label:SetText("钥匙栏 (" .. #krList .. ")")
+        krHdr:Show()
+        curY = curY - 22
+        for i, data in ipairs(krList) do
+            slotIdx = slotIdx + 1
+            local btn = GetOrCreateSlot(slotIdx)
+            if btn then
+                btn:GetParent():SetParent(child)
+                local col = (i - 1) % columns
+                local row = math.floor((i - 1) / columns)
+                RenderButton(btn, data, slotIdx, col, row, startX, curY, columns)
+            end
+        end
+        local krRows = math.ceil(math.max(#krList, 1) / columns)
+        curY = curY - (krRows * (SLOT_SIZE + SPACING))
+    elseif selectedCategoryIndex == -1 or selectedCategoryIndex == -2 then
         -- "OneBag"/"MultiBag" view: Pinned Items (display-only) + bag section(s)
         -- + Reagent Bag. OneBag merges bags 0-4 into one "Main Bags" section;
         -- MultiBag renders one section per bag. Everything else is shared.
@@ -6304,7 +6389,8 @@ function EUI_BagsWindow:RefreshBags()
         local parent = btn:GetParent()
         btn:SetID(i)
         parent:Show()
-        local invID = C_Container.ContainerIDToInventoryID(i)
+        local invID = 0
+        if i > 0 then invID = C_Container.ContainerIDToInventoryID(i) end
         local texture = GetInventoryItemTexture("player", invID)
         local quality = GetInventoryItemQuality("player", invID) or 0
         local free = C_Container.GetContainerNumFreeSlots(i)
@@ -6568,11 +6654,18 @@ local function StartAddon()
     end
 
     local _lastToggleTime = 0
+    -- One press must produce exactly one open/close. The client can fire
+    -- several bag commands for a single press (ToggleAllBags + ToggleBackpack
+    -- + ToggleBag in the same frame, or key repeat while the key is held),
+    -- so collapse every bag toggle that arrives within 150ms of the last one.
+    local function BagToggleDebounced()
+        local now = GetTime()
+        if now - _lastToggleTime < 0.15 then return true end
+        _lastToggleTime = now
+        return false
+    end
     local function SmartToggleBags()
-        -- Debounce: Blizzard keybinds can fire both ToggleAllBags and
-        -- C_Container.ToggleAllBags in the same frame, causing a double-toggle.
-        if GetTime() == _lastToggleTime then return end
-        _lastToggleTime = GetTime()
+        if BagToggleDebounced() then return end
         local enhancedEnabled = BP().enhancedBags ~= false
         if enhancedEnabled then ToggleEUI()
         else if OriginalToggleAllBags then OriginalToggleAllBags() end end
@@ -6605,12 +6698,12 @@ local function StartAddon()
     KillBlizzard()
 
     hooksecurefunc("OpenAllBags", function()
-        if BP().enhancedBags ~= false and not EUI_Bags:IsVisible() then ToggleEUI() end
+        if not BagToggleDebounced() and BP().enhancedBags ~= false and not EUI_Bags:IsVisible() then ToggleEUI() end
         KillBlizzard()
     end)
 
     hooksecurefunc("CloseAllBags", function()
-        if BP().enhancedBags ~= false and EUI_Bags:IsVisible() then
+        if not BagToggleDebounced() and BP().enhancedBags ~= false and EUI_Bags:IsVisible() then
             EUI_Bags:Hide()
             EUI_BagsReagent:Hide()
             if not EllesmereUIDB then EllesmereUIDB = {} end
@@ -6759,6 +6852,7 @@ local function StartAddon()
     end
 
     EUI_Bags:RegisterEvent("BAG_UPDATE")
+    EUI_Bags:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
     EUI_Bags:RegisterEvent("PLAYER_MONEY")
     EUI_Bags:RegisterEvent("ITEM_LOCK_CHANGED")
     EUI_Bags:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
@@ -6873,7 +6967,15 @@ local function StartAddon()
             end
             return
         end
-        if event == "BAG_UPDATE" and EUI_Bags.refreshEnabled ~= false then
+        if event == "PLAYER_EQUIPMENT_CHANGED" then
+            local slot = bagID
+            if slot and slot >= 20 and slot <= 23 and EUI_BagsWindow:IsVisible() and not InCombatLockdown() then
+                C_Timer.After(0.05, function() if EUI_BagsWindow:IsVisible() then EUI_BagsWindow:RefreshBags() end end)
+                C_Timer.After(0.30, function() if EUI_BagsWindow:IsVisible() then EUI_BagsWindow:RefreshBags() end end)
+                ScheduleRefresh()
+            end
+            return
+        elseif event == "BAG_UPDATE" and EUI_Bags.refreshEnabled ~= false then
             -- Nothing is being presented while the window is closed. Coalesce
             -- arbitrarily many ammo BAG_UPDATEs and reconcile once when opened.
             if not EUI_Bags:IsVisible() then

@@ -127,7 +127,7 @@ initFrame:SetScript("OnEvent", function(self)
         label:SetFont(FONT_PATH, 11, GetCDMOptOutline())
         label:SetPoint("CENTER")
         label:SetTextColor(0.7, 0.7, 0.7, 0.75)
-        label:SetText("CDM edit spec: " .. (specName or "unresolved")
+        label:SetText("冷却管理器编辑专精：" .. (specName or "unresolved")
             .. (specKey and (" (" .. specKey .. ")") or ""))
         return ROW_H
     end
@@ -5882,7 +5882,7 @@ initFrame:SetScript("OnEvent", function(self)
         local correctBar = isSpellBuff and "a Buff bar" or "a Cooldown or Utility bar"
         EllesmereUI:ShowConfirmPopup({
             title = "Wrong Bar Type",
-            message = (spellName or "This spell") .. " is tracked by Blizzard as " .. (isSpellBuff and "a buff/aura" or "a cooldown") .. " and should be added to " .. correctBar .. ".",
+            message = EllesmereUI.Lf("%1$s is tracked by Blizzard as %2$s and should be added to %3$s.", spellName or EllesmereUI.L("This spell"), isSpellBuff and EllesmereUI.L("a buff/aura") or EllesmereUI.L("a cooldown"), correctBar),
             confirmText = "Open Blizzard CDM",
             cancelText = "Close",
             onConfirm = function()
@@ -6934,7 +6934,7 @@ initFrame:SetScript("OnEvent", function(self)
                     nameLine:SetText(slotName .. " - " .. (itemName or EMPTY or ""))
                 elseif slot then
                     nameLine:SetTextColor(1, 0.4, 0.4, 0.9)
-                    nameLine:SetText("Enter a slot ID from 1 to 19")
+                    nameLine:SetText("输入 1 到 19 之间的栏位 ID")
                 else
                     nameLine:SetText("")
                 end
@@ -6998,7 +6998,7 @@ initFrame:SetScript("OnEvent", function(self)
         local function DoAdd()
             local slot = tonumber(popup._editBox:GetText())
             if not slot or not ns.INV_SLOT_NAMES[slot] then
-                SetStatus("Enter a slot ID from 1 to 19")
+                SetStatus("输入 1 到 19 之间的栏位 ID")
                 return
             end
             local marker = -slot
@@ -16103,11 +16103,11 @@ initFrame:SetScript("OnEvent", function(self)
                 local bg = popup:CreateTexture(nil, "BACKGROUND"); bg:SetAllPoints(); bg:SetTexture(0.06, 0.08, 0.10, 1)
                 EllesmereUI.MakeBorder(popup, 1, 1, 1, 0.15, PP)
                 local titleFs = EllesmereUI.MakeFont(popup, 15, nil, 1, 1, 1, 1)
-                titleFs:SetPoint("TOP", popup, "TOP", 0, -14); titleFs:SetText("Sync From")
+                titleFs:SetPoint("TOP", popup, "TOP", 0, -14); titleFs:SetText("同步自")
                 local subFs = EllesmereUI.MakeFont(popup, 11, nil, 1, 1, 1, 0.45)
                 subFs:SetPoint("TOP", titleFs, "BOTTOM", 0, -4)
                 subFs:SetWidth(DDW); subFs:SetJustifyH("CENTER")
-                subFs:SetText("Choose the spec to copy trinkets, pots, racials & buff presets from")
+                subFs:SetText("选择要从哪个专精复制饰品、药水、种族技能与增益预设")
                 local search = EllesmereUI.SafeCreateFrame("EditBox", nil, popup)
                 PP.Size(search, DDW, 26)
                 search:SetPoint("TOP", subFs, "BOTTOM", 0, -10)
@@ -16117,7 +16117,7 @@ initFrame:SetScript("OnEvent", function(self)
                 local sbg = search:CreateTexture(nil, "BACKGROUND"); sbg:SetAllPoints(); sbg:SetTexture(0, 0, 0, 0.4)
                 EllesmereUI.MakeBorder(search, 1, 1, 1, 0.10, PP)
                 local ph = search:CreateFontString(nil, "OVERLAY"); ph:SetFont(FONT_PATH, 11, "")
-                ph:SetTextColor(0.5, 0.5, 0.5, 0.6); ph:SetPoint("LEFT", search, "LEFT", 6, 0); ph:SetText("Search...")
+                ph:SetTextColor(0.5, 0.5, 0.5, 0.6); ph:SetPoint("LEFT", search, "LEFT", 6, 0); ph:SetText("搜索...")
                 search:SetScript("OnEscapePressed", function(s) s:ClearFocus() end)
                 -- Scrollable, capped list: a long cross-class spec list scrolls
                 -- (mousewheel) inside a fixed max height instead of running off the
@@ -16230,11 +16230,11 @@ initFrame:SetScript("OnEvent", function(self)
                     s.checked = (s.key == sourceKey)
                 end
                 EllesmereUI:ShowCDMSpecPickerPopup({
-                    title       = "Copy Generic CDs/Buffs",
-                    subtitle    = "Choose target specs to receive a one-time copy from " .. srcName .. ". Later edits stay independent.",
+                    title       = EllesmereUI.L("Copy Generic CDs/Buffs"),
+                    subtitle    = EllesmereUI.Lf("Choose target specs to receive a one-time copy from %1$s. Later edits stay independent.", srcName),
                     confirmText = "Copy",
                     specs       = specs,
-                    lockedSpecs = { [sourceKey] = "This is the source spec and is always included." },
+                    lockedSpecs = { [sourceKey] = EllesmereUI.L("This is the source spec and is always included.") },
                     onConfirm   = function(selectedSpecs)
                         selectedSpecs[sourceKey] = true
                         local cnt = 0

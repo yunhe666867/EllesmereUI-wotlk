@@ -295,6 +295,22 @@ local function SkinGroupLootFrame(frame, index)
 		local name = _G[frameName .. "Name"]
 		if name then FontOnly(name, 11) end
 	end
+
+	-- Blizzard's GroupLootFrame_OnShow re-applies the native DialogFrame
+	-- backdrop + corner on EVERY show (including when a roll frame is reused).
+	-- Re-skin AFTER it on every OnShow, not just the first, or the ornate
+	-- border returns. Keep the look clean: hide the corner and gold dragon.
+	WSkin:SetTemplate(frame, "Transparent")
+	frame:SetBackdropColor(0, 0, 0, 0.78)
+	local showCorner = _G[frameName .. "Corner"]
+	if showCorner then showCorner:Hide() end
+	local showDecoration = _G[frameName .. "Decoration"]
+	if showDecoration then showDecoration:Hide() end
+	local showSlot = _G[frameName .. "SlotTexture"]
+	if showSlot then showSlot:SetAlpha(0) end
+	local showNameFrame = _G[frameName .. "NameFrame"]
+	if showNameFrame then showNameFrame:SetAlpha(0) end
+
 	-- Blizzard may refresh the pass button's native art as a roll is reused.
 	-- Reapply the close treatment on show without replacing any button methods.
 	local pass = _G[frameName .. "PassButton"]
